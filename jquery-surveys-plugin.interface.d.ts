@@ -17,6 +17,7 @@ interface SurveysPluginOptions {
   survey_id: string;
   mode: string; //inline|embed
   allow_multiple: boolean;
+  feedbackSource: string | HTMLElement;
 }
 
 /**
@@ -70,4 +71,8 @@ interface JQuery {
 
   Survey: any;
   SurveyWindow: any;
+}
+
+interface JQueryStatic {
+  drawpad: any;
 }

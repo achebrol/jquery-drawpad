@@ -4,6 +4,7 @@ import html from './survey.html';
 import './survey.css';
 import * as Survey from 'survey-jquery';
 export class SurveysService {
+  private FEEDBACK_SURVEY_ID = '60015dbce08d4f006815c1d3';
   private options: SurveysPluginOptions;
   private aa_survey: Survey.Survey;
   constructor(options: SurveysPluginOptions) {
@@ -57,6 +58,41 @@ export class SurveysService {
         },
         error: (err) => {
           reject(err);
+        }
+      });
+    });
+  }
+  postUserFeedback(data: any): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+      const cookieService = new CookieService();
+      const smsession = cookieService.getSMSession();
+      $.ajax({
+        url: this.options.url,
+        contentType: 'application/json',
+        headers: { SMSESSION: smsession },
+        type: 'POST',
+        data: JSON.stringify({
+          query: `mutation CreateSurveyResultMutation($surveyId: String!,$archerId: String!, $input: SurveyResultInput!) 
+                  {  createSurveyResult(
+                      surveyId: $surveyId, 
+                      archerId: $archerId,
+                      input: $input
+                      )
+                  }
+              `,
+          variables: {
+            surveyId: this.FEEDBACK_SURVEY_ID,
+            archerId: this.options.archer_id,
+            input: {
+              result: data
+            }
+          }
+        }),
+        error: () => {
+          reject(false);
+        },
+        success: (response) => {
+          resolve(true);
         }
       });
     });
