@@ -1,6 +1,78 @@
 .aa_item {
   color: blue;
 }
+/* 
+	cnbilgin 
+	https://github.com/cnbilgin/jquery-drawpad
+	v 0.1
+*/
+
+.drawpad * {
+  box-sizing: border-box;
+}
+.drawpad {
+  background-color: #fff;
+  position: relative;
+}
+.drawpad.drawpad-dashed {
+  border: 2px dashed black;
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.drawpad > canvas {
+  width: 100%;
+  height: 100%;
+}
+.drawpad .drawpad-toolbox {
+  width: 25px;
+  right: 10px;
+  top: 10px;
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  height: calc(100% - 20px);
+  flex-direction: column;
+  opacity: 0.3;
+  pointer-events: none;
+}
+.drawpad .drawpad-toolbox:hover {
+  opacity: 1;
+}
+
+.drawpad .drawpad-colors {
+  margin-bottom: 15px;
+  pointer-events: all;
+}
+.drawpad .drawpad-colorbox {
+  width: 25px;
+  height: 25px;
+  margin-bottom: 10px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.drawpad.drawpad-drawing .drawpad-colors {
+  pointer-events: none;
+}
+
+.drawpad .drawpad-colorbox:last-child {
+  margin-bottom: 0;
+}
+
+.drawpad .drawpad-colorbox:hover {
+  filter: brightness(1.3);
+}
+.drawpad .drawpad-colorbox:active {
+  filter: brightness(0.8);
+}
+.drawpad .drawpad-eraser {
+  background-color: #fff;
+  border-style: dashed;
+  border-color: gray;
+}
+.drawpad .drawpad-colorbox.drawpad-colorbox-active {
+  border-color: #000;
+}
 
 /*Feedback Syles*/
 /*
@@ -15,6 +87,17 @@
 
 .feedback-review label {
   font-size: 14px;
+}
+.feedback-info {
+  position: absolute;
+  display: none;
+  z-index: 9999;
+  left: 30%;
+  top: 10px;
+  padding: 10px;
+  background-color: aliceblue;
+  border: 1px solid red;
+  border-radius: 4px;
 }
 
 .feedback-body .feedback-error {
@@ -100,9 +183,15 @@
   overflow: auto;
   height: 700px;
 }
-.feedback-modal.large .feedback-body .feedback-screenshot {
-  overflow: auto;
-  height: 900px;
+.feedback-modal .feedback-body .feedback-screenshot {
+  overflow: hidden;
+  max-height: 300px;
+  max-height: 300px;
+  width: 300px;
+  border: 1px dotted lightblue;
+}
+.feedback-screenshot canvas {
+  background-color: rgb(240, 248, 255);
 }
 
 .feedback-modal .feedback-close {
@@ -323,6 +412,7 @@ input[type='submit'].feedback-btn.small {
 }
 .feedback-body {
   padding: 15px;
+  height: 380px;
 }
 .feedback-body .modal-form {
   margin-bottom: 0;
@@ -420,8 +510,12 @@ input[type='submit'].feedback-btn.small {
   position: absolute;
   top: 0;
   left: 0;
-  pointer-events: none;
-  z-index: 1999;
+  z-index: 3999;
+  width: 100%;
+  height: 100%;
+}
+.feedback-canvas canvas {
+  position: absolute;
 }
 
 #feedback-blackout-element {

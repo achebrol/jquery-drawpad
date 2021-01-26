@@ -1,4 +1,5 @@
 import $ from 'jquery';
+import { takeScreenshotJpegBlob } from './media-utilities';
 
 import { SurveysService } from './surveys.service';
 
@@ -25,29 +26,27 @@ $.fn.surveysPlugin = Object.assign<
     // user clicks the element that the plugin is attached to. It produces a greeting message and appends it to the output.
     let surveyservice = new SurveysService(options);
     surveyservice.initializeSurvey();
-
+    let plugin: any;
     jQuery(`#${options.feedbackSource}`).on('click', () => {
       jQuery('.feedback-glass').show();
       jQuery('.feedback-modal').show();
-      jQuery('.feedback-btn.close').hide();
+      jQuery('.feedback-btn.close-btn').hide();
+      jQuery('.feedback-btn.continue-btn').show();
       jQuery('.feedback-close').on('click', () => {
         jQuery('.feedback-glass').hide();
         jQuery('.feedback-modal').hide();
       });
-      jQuery('.feedback-btn.close').on('click', () => {
+      jQuery('.feedback-btn.close-btn').on('click', () => {
         jQuery('.feedback-glass').hide();
         jQuery('.feedback-modal').hide();
       });
-      jQuery('.feedback-btn').on('click', async () => {
+      jQuery('.feedback-btn.continue-btn').on('click', async () => {
         var data = {
           comments: jQuery('.feedback-comments').eq(0).val(),
           employee_name: jQuery('.feedback-name').eq(0).val(),
           employee_email: jQuery('.feedback-email').eq(0).val(),
-          screen_shot: (jQuery(
-            '.feedback-screenshot canvas'
-          )[0] as HTMLCanvasElement).toDataURL()
+          screen_shot: plugin.getBytes()
         };
-        console.log(data);
         await surveyservice.postUserFeedback(data);
         jQuery('.feedback-modal').removeClass('large');
         jQuery('.feedback-body')
@@ -56,10 +55,9 @@ $.fn.surveysPlugin = Object.assign<
             '<h3>Thank you for your feedback.we will contact you if we need more information</h3>'
           );
         jQuery('.feedback-btn').hide();
-        jQuery('.feedback-btn.close').show();
+        jQuery('.feedback-btn.close-btn').show();
       });
       //canvas.toDataURL();
-
       jQuery('.feedback-include-screen').on('change', () => {
         if (jQuery('.feedback-include-screen').prop('checked')) {
           //1.Hide the modal
@@ -69,8 +67,16 @@ $.fn.surveysPlugin = Object.assign<
           //3.Show the drawpad
           jQuery('.feedback-screenshot').drawpad();
           //4.Enlarge the modal window
-          jQuery('.feedback-modal').addClass('large');
+          //jQuery('.feedback-modal').addClass('large');
         }
+      });
+      jQuery('.feedback-screenshot').on('click', async () => {
+        jQuery('.feedback-glass').hide();
+        jQuery('.feedback-modal').hide();
+        var screenshotJpegBlob = await takeScreenshotJpegBlob();
+        plugin = jQuery('.feedback-canvas').show().drawpad();
+        plugin.setCaptureScreen(screenshotJpegBlob);
+        jQuery('.feedback-info').show().delay(5000).fadeOut();
       });
     });
     // Return the jQuery object for chaining.
@@ -85,7 +91,7 @@ $.fn.surveysPlugin = Object.assign<
       assetsUrl: 'https://aanpsadminui.z13.web.core.windows.net',
       mode: 'widget',
       survey_id: null,
-      url: 'https://aa-nps-admin-gw.azurewebsites.net/graphql',
+      url: 'https://aa-nps-admin-gw-apim.azure-api.net/graphql',
       feedbackSource: null
     }
   }

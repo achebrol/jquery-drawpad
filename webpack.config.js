@@ -1,7 +1,12 @@
 const path = require('path');
 
 module.exports = {
-  entry: ['./jquery-surveys-plugin.ts', './jquery-drawpad.ts'],
+  mode: 'development',
+  entry: [
+    './jquery-surveys-plugin.ts',
+    './jquery-drawpad.ts',
+    './jquery-feedback.ts'
+  ],
   devtool: 'inline-source-map',
   module: {
     rules: [

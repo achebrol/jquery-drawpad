@@ -1,7 +1,11 @@
 <div class="aa_surveys">
   <div id="aa_nps_surveyContainer"></div>
 </div>
-<div class="feedback-canvas" style="pointer-events: none; display: none"></div>
+<h4 class="feedback-info">
+  Using the toolbar on the rightside, hightlight the problem area or erase
+  sensitive information
+</h4>
+<div class="feedback-canvas" style="display: none"></div>
 <div class="feedback-glass" style="pointer-events: none; display: none"></div>
 <div class="feedback-modal" style="display: none">
   <div class="feedback-header">
@@ -14,15 +18,15 @@
       ><textarea class="feedback-comments"></textarea> <label>Your Name:</label
       ><input class="feedback-name" /><label>Your EMail:</label
       ><input class="feedback-email" />
-      <label
-        ><input type="checkbox" class="feedback-include-screen" />Include
-        Screenshot</label
-      >
-      <div class="feedback-screenshot"></div>
+      <!--<input type="checkbox" class="feedback-include-screen" />-->
+      <label>Click below to include a screenshot</label>
+      <div class="feedback-screenshot" style="cursor: pointer">
+        <canvas></canvas>
+      </div>
     </div>
   </div>
   <div class="feedback-footer">
-    <button class="feedback-btn">Continue</button>
-    <button class="feedback-btn close hide">Close</button>
+    <button class="feedback-btn continue-btn">Continue</button>
+    <button class="feedback-btn close-btn" style="display: none">Close</button>
   </div>
 </div>
