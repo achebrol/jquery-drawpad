@@ -1,389 +1,381 @@
-/* 
-	cnbilgin 
-	https://github.com/cnbilgin/jquery-drawpad
-	v 0.1
-*/
-
 import {
   blobToCanvas,
   getJpegBlob,
   takeScreenshotJpegBlob
 } from './media-utilities';
 
-(function ($) {
-  const pluginSuffix = 'drawpad';
-  $.drawpad = function (element: HTMLElement, options: DrawpadPluginOptions) {
-    let defaults = {
-      defaultColor: '#f1c40f',
-      colors: [
-        '#000000', //black
-        '#2ecc71', //green
-        '#3498db', //blue
-        '#e74c3c', //red
-        '#f1c40f', //yellow
-        '#9b59b6', //purple
-        '#e67e22' //orange
-      ],
-      eraserSize: 10
+export class DrawpadPlugin {
+  pluginSuffix = 'drawpad';
+  $element: JQuery;
+  $canvas: JQuery;
+  canvas: HTMLCanvasElement;
+  context: CanvasRenderingContext2D;
+
+  $overlayCanvas: JQuery;
+  overlayCanvas: HTMLCanvasElement;
+  overlayContext: CanvasRenderingContext2D;
+
+  options: DrawpadPluginOptions;
+  defaults: DrawpadPluginOptions = {
+    defaultColor: '#f1c40f',
+    colors: [
+      '#000000', //black
+      '#2ecc71', //green
+      '#3498db', //blue
+      '#e74c3c', //red
+      '#f1c40f', //yellow
+      '#9b59b6', //purple
+      '#e67e22' //orange
+    ],
+    eraserSize: 10
+  };
+  coordinate = { x: 0, y: 0 };
+  drawing = false;
+  drawingType = 'pen';
+  lineStyle: {
+    width: number;
+    color: string;
+    type: CanvasLineCap;
+  } = {
+    width: 5,
+    color: this.defaults.defaultColor,
+    type: 'round'
+  };
+  bytes = '';
+  //Rectangle Stuff
+  positionA: any;
+  positionB: any;
+  canvasOffset: any; // = $canvas.offset();
+  offsetX: number; //= canvasOffset.left;
+  offsetY: number; //= canvasOffset.top;
+  scrollX: number; //= $canvas.scrollLeft();
+  scrollY: number; //= $canvas.scrollTop();
+  startX: number;
+  startY: number;
+
+  prevStartX = 0;
+  prevStartY = 0;
+
+  prevWidth = 0;
+  prevHeight = 0;
+  //End Rectangle Stuff
+
+  constructor(element: JQuery, options: Partial<DrawpadPluginOptions>) {
+    this.$element = element;
+    this.options = $.extend({}, this.defaults, options);
+    this.initialize();
+  }
+  /*Private Methods */
+  private initialize() {
+    this.$element.addClass(this.pluginSuffix);
+    this.$element.append(this.createCanvas());
+    this.$element.append(this.createOverlayCanvas()); //TODO: Support drawing rectangles
+    this.$element.append(this.createToolbox());
+    this.resizeCanvas();
+
+    this.$overlayCanvas.on('mousedown', this.handleStartDraw.bind(this));
+    this.$overlayCanvas.on(
+      'mouseup mouseleave mouseout',
+      this.handleStopDraw.bind(this)
+    );
+    this.$overlayCanvas.on('mousemove', this.handleDraw.bind(this));
+  }
+
+  private createCanvas() {
+    this.$canvas = $('<canvas></canvas>');
+    this.canvas = this.$canvas.get(0) as HTMLCanvasElement;
+    this.context = this.canvas.getContext('2d');
+    return this.$canvas;
+  }
+  private createOverlayCanvas() {
+    this.$overlayCanvas = $('<canvas></canvas>');
+    this.overlayCanvas = this.$overlayCanvas.get(0) as HTMLCanvasElement;
+    this.overlayContext = this.overlayCanvas.getContext('2d');
+    return this.$overlayCanvas;
+  }
+  private resizeCanvas() {
+    this.canvas.width = this.$element.width();
+    this.canvas.height = this.$element.height();
+    this.overlayCanvas.width = this.$element.width();
+    this.overlayCanvas.height = this.$element.height();
+  }
+  private getMousePos(canvas: HTMLCanvasElement, evt: MouseEvent) {
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: evt.clientX - rect.left,
+      y: evt.clientY - rect.top
     };
+  }
+  private createToolbox() {
+    const $toolbox = $(`<div class="${this.pluginSuffix}-toolbox"></div>`);
+    const createColorbox = (color: string) => {
+      const activeClass = `${this.pluginSuffix}-colorbox-active`;
+      let $colorbox = $(
+        `<div class="${this.pluginSuffix}-colorbox" style="background-color:${color};">&nbsp;</div>`
+      );
+      if (color === this.options.defaultColor) {
+        $colorbox.addClass(activeClass);
+      }
 
-    let plugin = this;
-    let $element = $(element);
-
-    plugin.settings = {};
-
-    const coordinate = { x: 0, y: 0 };
-    let drawing = false;
-    let drawingType = 'pen';
-    const lineStyle = {
-      width: 5,
-      color: defaults.defaultColor,
-      type: 'round'
-    };
-    let bytes = '';
-    //Rectangle Stuff
-    let positionA: any;
-    let positionB: any;
-    let canvasOffset; // = $canvas.offset();
-    let offsetX: number; //= canvasOffset.left;
-    let offsetY: number; //= canvasOffset.top;
-    let scrollX: number; //= $canvas.scrollLeft();
-    let scrollY: number; //= $canvas.scrollTop();
-    let startX: number;
-    let startY: number;
-
-    let prevStartX = 0;
-    let prevStartY = 0;
-
-    let prevWidth = 0;
-    let prevHeight = 0;
-    //End Rectangle Stuff
-    /* private methods */
-    const createCanvas = () => {
-      plugin.$canvas = $('<canvas></canvas>');
-      plugin.canvas = plugin.$canvas.get(0) as HTMLCanvasElement;
-      plugin.context = plugin.canvas.getContext('2d');
-
-      return plugin.$canvas;
-    };
-    const createOverlayCanvas = () => {
-      plugin.$overlayCanvas = $('<canvas></canvas>');
-      plugin.overlayCanvas = plugin.$overlayCanvas.get(0) as HTMLCanvasElement;
-      plugin.overlayContext = plugin.overlayCanvas.getContext('2d');
-
-      return plugin.$overlayCanvas;
-    };
-    const resizeCanvas = () => {
-      plugin.canvas.width = $element.width();
-      plugin.canvas.height = $element.height();
-      plugin.overlayCanvas.width = $element.width();
-      plugin.overlayCanvas.height = $element.height();
-    };
-    const getMousePos = (canvas: HTMLCanvasElement, evt: MouseEvent) => {
-      var rect = canvas.getBoundingClientRect();
-      return {
-        x: evt.clientX - rect.left,
-        y: evt.clientY - rect.top
-      };
-    };
-    const createToolbox = () => {
-      const $toolbox = $(`<div class="${pluginSuffix}-toolbox"></div>`);
-      const createColorbox = (color: string) => {
-        const activeClass = `${pluginSuffix}-colorbox-active`;
-        let $colorbox = $(
-          `<div class="${pluginSuffix}-colorbox" style="background-color:${color};">&nbsp;</div>`
-        );
-        if (color === plugin.settings.defaultColor) {
-          $colorbox.addClass(activeClass);
-        }
-
-        $colorbox.on('click', () => {
-          $element.removeClass(`${pluginSuffix}-erase-mode`);
-          lineStyle.color = color;
-          // drawingType = 'pen';
-          $colorbox.addClass(activeClass).siblings().removeClass(activeClass);
-          logDrawingParams();
-        });
-
-        return $colorbox;
-      };
-      const createEraser = () => {
-        const activeClass = `${pluginSuffix}-colorbox-active`;
-        const $eraser = $(
-          `<div class="${pluginSuffix}-colorbox ${pluginSuffix}-eraser">&nbsp;</div>`
-        );
-
-        $eraser.on('click', function () {
-          drawingType = 'eraser';
-          $element.addClass(`${pluginSuffix}-erase-mode`);
-          $eraser.addClass(activeClass).siblings().removeClass(activeClass);
-        });
-
-        return $eraser;
-      };
-      const createDrawingTool = (tool: string) => {
-        const activeClass = `${pluginSuffix}-drawing-type-active`;
-        var text = tool == 'pen' ? '&#x3030;' : '&#x25AD;';
-        var title = tool == 'pen' ? 'Freehand' : 'Rectangle';
-        const $drawingTool = $(
-          `<div class="${pluginSuffix}-colorbox ${pluginSuffix}-drawing-tool" title="${title}">${text}</div>`
-        );
-        if (drawingType === tool) {
-          $drawingTool.addClass(activeClass);
-        }
-        $drawingTool.on('click', function () {
-          drawingType = tool;
-          logDrawingParams();
-          $element.addClass(`${pluginSuffix}-drawing-tool`);
-          $drawingTool
-            .addClass(activeClass)
-            .siblings()
-            .removeClass(activeClass);
-        });
-
-        return $drawingTool;
-      };
-      const createScreenCapture = () => {
-        const $screenCapture = $(
-          `<div class="${pluginSuffix}-colorbox ${pluginSuffix}-screen">&#x1F3AC;</div>`
-        );
-
-        $screenCapture.on('click', async () => {
-          //jQuery('.feedback-glass').hide();
-          //jQuery('.feedback-modal').hide();
-          jQuery('.feedback-canvas').hide();
-          var screenshotJpegBlob = await takeScreenshotJpegBlob();
-          await blobToCanvas(screenshotJpegBlob, null, null, plugin.canvas);
-          jQuery('.feedback-canvas').show();
-          //jQuery('.feedback-modal').show();
-        });
-
-        return $screenCapture;
-      };
-
-      const createDoneButton = () => {
-        const $doneButton = $(
-          `<div class="${pluginSuffix}-colorbox ${pluginSuffix}-done" style="border-radius:0 2px 2px 0;" title="Click here after done editing.">&#x2714;</div>`
-        );
-
-        $doneButton.on('click', async () => {
-          const blob = await getJpegBlob(plugin.canvas);
-          jQuery('.feedback-glass').show();
-          jQuery('.feedback-modal').show();
-          jQuery('.feedback-canvas').hide();
-          var canvas = jQuery(
-            '.feedback-screenshot canvas'
-          )[0] as HTMLCanvasElement;
-          bytes = canvas.toDataURL();
-          await blobToCanvas(blob, 300, 300, canvas);
-        });
-
-        return $doneButton;
-      };
-
-      const createHandleTool = () => {
-        const activeClass = `${pluginSuffix}-colorbox-active`;
-        let $dragHandle = $(
-          `<div class="${pluginSuffix}-colorbox" title="Drag to move the toolbar" style="cursor:move;border-radius:2px 0 0 2px;">&#x2630;</div>`
-        );
-        let active = false;
-        let currentX: number;
-        let currentY: number;
-        let initialX: number;
-        let initialY: number;
-        let xOffset = 0;
-        let yOffset = 0;
-        $dragHandle.on('mousedown', function (e) {
-          initialX = e.clientX - xOffset;
-          initialY = e.clientY - yOffset;
-          active = true;
-          e.stopPropagation();
-          e.preventDefault();
-        });
-        $dragHandle.on('mouseup', function (e) {
-          initialX = currentX;
-          initialY = currentY;
-
-          active = false;
-          e.stopPropagation();
-          e.preventDefault();
-        });
-        $dragHandle.on('mousemove', function (e) {
-          if (active) {
-            e.preventDefault();
-            e.stopPropagation();
-            currentX = e.clientX - initialX;
-            currentY = e.clientY - initialY;
-
-            xOffset = currentX;
-            yOffset = currentY;
-            $dragHandle.get(0).parentElement.parentElement.style.transform =
-              'translate3d(' + currentX + 'px, ' + currentY + 'px, 0)';
-          }
-        });
-        return $dragHandle;
-      };
-      const $colors = $(`<div class="${pluginSuffix}-colors"></div>`);
-      $colors.append(createHandleTool());
-      plugin.settings.colors.forEach((color: string) => {
-        $colors.append(createColorbox(color));
+      $colorbox.on('click', () => {
+        this.$element.removeClass(`${this.pluginSuffix}-erase-mode`);
+        this.lineStyle.color = color;
+        // drawingType = 'pen';
+        $colorbox.addClass(activeClass).siblings().removeClass(activeClass);
+        this.logDrawingParams();
       });
 
-      // $colors.append(createEraser()); //dont really need it
-      // $colors.append(createScreenCapture());
-      $colors.append(createDrawingTool('pen'));
-      $colors.append(createDrawingTool('rectangle'));
-      $colors.append(createDoneButton());
-      $toolbox.append($colors);
+      return $colorbox;
+    };
+    const createEraser = () => {
+      const activeClass = `${this.pluginSuffix}-colorbox-active`;
+      const $eraser = $(
+        `<div class="${this.pluginSuffix}-colorbox ${this.pluginSuffix}-eraser">&nbsp;</div>`
+      );
 
-      return $toolbox;
-    };
-    const logDrawingParams = () => {
-      console.log(drawingType, lineStyle, drawing);
-    };
-    const updateCoordinate = (event: any) => {
-      coordinate.x = event.offsetX;
-      coordinate.y = event.offsetY;
-    };
+      $eraser.on('click', () => {
+        this.drawingType = 'eraser';
+        this.$element.addClass(`${this.pluginSuffix}-erase-mode`);
+        $eraser.addClass(activeClass).siblings().removeClass(activeClass);
+      });
 
-    const handleStartDraw = (event: MouseEvent) => {
-      drawing = true;
-      $element.addClass(`${pluginSuffix}-drawing`);
-      updateCoordinate(event);
-      positionA = getMousePos(plugin.canvas, event);
-      startX = event.clientX - offsetX;
-      startY = event.clientY - offsetY;
-      handleDraw(event);
+      return $eraser;
     };
-    const handleStopDraw = (event: MouseEvent) => {
-      drawing = false;
-      $element.removeClass(`${pluginSuffix}-drawing`);
-      positionB = getMousePos(plugin.canvas, event);
-      if (drawingType == 'rectangle' && prevWidth != 0) {
-        plugin.context.lineWidth = lineStyle.width;
-        plugin.context.strokeStyle = lineStyle.color;
-        plugin.context.strokeRect(
-          prevStartX,
-          prevStartY,
-          prevWidth,
-          prevHeight
-        );
-        //reset
-        prevWidth = 0;
-        prevHeight = 0;
+    const createDrawingTool = (tool: string) => {
+      const activeClass = `${this.pluginSuffix}-drawing-type-active`;
+      var text = tool == 'pen' ? '&#x3030;' : '&#x25AD;';
+      var title = tool == 'pen' ? 'Freehand' : 'Rectangle';
+      const $drawingTool = $(
+        `<div class="${this.pluginSuffix}-colorbox ${this.pluginSuffix}-drawing-tool" title="${title}">${text}</div>`
+      );
+      if (this.drawingType === tool) {
+        $drawingTool.addClass(activeClass);
       }
+      $drawingTool.on('click', () => {
+        this.drawingType = tool;
+        this.logDrawingParams();
+        this.$element.addClass(`${this.pluginSuffix}-drawing-tool`);
+        $drawingTool.addClass(activeClass).siblings().removeClass(activeClass);
+      });
+
+      return $drawingTool;
     };
-    const handleDraw = (event: MouseEvent) => {
-      if (!drawing) return;
-      const ctx = plugin.context;
-      if (drawingType != 'rectangle') {
-        ctx.beginPath();
-        switch (drawingType) {
-          case 'pen':
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.lineWidth = lineStyle.width;
-            ctx.strokeStyle = lineStyle.color;
-            break;
-          case 'eraser':
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.lineWidth = plugin.settings.eraserSize;
-            ctx.strokeStyle = 'black';
-            break;
+    const createScreenCapture = () => {
+      const $screenCapture = $(
+        `<div class="${this.pluginSuffix}-colorbox ${this.pluginSuffix}-screen">&#x1F3AC;</div>`
+      );
+
+      $screenCapture.on('click', async () => {
+        //jQuery('.feedback-glass').hide();
+        //jQuery('.feedback-modal').hide();
+        jQuery('.feedback-canvas').hide();
+        var screenshotJpegBlob = await takeScreenshotJpegBlob();
+        await blobToCanvas(screenshotJpegBlob, null, null, this.canvas);
+        jQuery('.feedback-canvas').show();
+        //jQuery('.feedback-modal').show();
+      });
+
+      return $screenCapture;
+    };
+    const createDoneButton = () => {
+      const $doneButton = $(
+        `<div class="${this.pluginSuffix}-colorbox ${this.pluginSuffix}-done" style="border-radius:0 2px 2px 0;" title="Click here after done editing.">&#x2714;</div>`
+      );
+
+      $doneButton.on('click', async () => {
+        const blob = await getJpegBlob(this.canvas);
+        jQuery('.feedback-glass').show();
+        jQuery('.feedback-modal').show();
+        jQuery('.feedback-canvas').hide();
+        var canvas = jQuery(
+          '.feedback-screenshot canvas'
+        )[0] as HTMLCanvasElement;
+        this.bytes = canvas.toDataURL();
+        await blobToCanvas(blob, 300, 300, canvas);
+      });
+
+      return $doneButton;
+    };
+    const createHandleTool = () => {
+      const activeClass = `${this.pluginSuffix}-colorbox-active`;
+      let $dragHandle = $(
+        `<div class="${this.pluginSuffix}-colorbox" title="Drag to move the toolbar" style="cursor:move;border-radius:2px 0 0 2px;">&#x2630;</div>`
+      );
+      let active = false;
+      let currentX: number;
+      let currentY: number;
+      let initialX: number;
+      let initialY: number;
+      let xOffset = 0;
+      let yOffset = 0;
+      $dragHandle.on('mousedown', function (e) {
+        initialX = e.clientX - xOffset;
+        initialY = e.clientY - yOffset;
+        active = true;
+        e.stopPropagation();
+        e.preventDefault();
+      });
+      $dragHandle.on('mouseup', function (e) {
+        initialX = currentX;
+        initialY = currentY;
+
+        active = false;
+        e.stopPropagation();
+        e.preventDefault();
+      });
+      $dragHandle.on('mousemove', function (e) {
+        if (active) {
+          e.preventDefault();
+          e.stopPropagation();
+          currentX = e.clientX - initialX;
+          currentY = e.clientY - initialY;
+
+          xOffset = currentX;
+          yOffset = currentY;
+          $dragHandle.get(0).parentElement.parentElement.style.transform =
+            'translate3d(' + currentX + 'px, ' + currentY + 'px, 0)';
         }
-        ctx.lineCap = lineStyle.type;
-        ctx.moveTo(coordinate.x, coordinate.y);
-        updateCoordinate(event);
-        ctx.lineTo(coordinate.x, coordinate.y);
+      });
+      return $dragHandle;
+    };
+    const $colors = $(`<div class="${this.pluginSuffix}-colors"></div>`);
+    $colors.append(createHandleTool());
+    this.options.colors.forEach((color: string) => {
+      $colors.append(createColorbox(color));
+    });
 
-        ctx.stroke();
-      } else {
-        const octx = plugin.overlayContext;
-        // octx.globalCompositeOperation = 'source-over';
-        octx.lineWidth = lineStyle.width;
-        octx.strokeStyle = lineStyle.color;
-        let mouseX = event.clientX - offsetX;
-        let mouseY = event.clientY - offsetY;
-        var width = mouseX - startX;
-        var height = mouseY - startY;
-        // clear the canvas
-        octx.clearRect(0, 0, plugin.canvas.width, plugin.canvas.height);
+    // $colors.append(createEraser()); //dont really need it
+    // $colors.append(createScreenCapture());
+    $colors.append(createDrawingTool('pen'));
+    $colors.append(createDrawingTool('rectangle'));
+    $colors.append(createDoneButton());
+    $toolbox.append($colors);
 
-        octx.strokeRect(startX, startY, width, height);
-        prevStartX = startX;
-        prevStartY = startY;
-
-        prevWidth = width;
-        prevHeight = height;
+    return $toolbox;
+  }
+  private logDrawingParams() {
+    //console.log(this.drawingType, this.lineStyle, this.drawing);
+  }
+  private updateCoordinate(event: MouseEvent) {
+    this.coordinate.x = event.offsetX;
+    this.coordinate.y = event.offsetY;
+  }
+  private handleStartDraw(event: MouseEvent) {
+    this.drawing = true;
+    this.$element.addClass(`${this.pluginSuffix}-drawing`);
+    this.updateCoordinate(event);
+    this.positionA = this.getMousePos(this.canvas, event);
+    this.startX = event.clientX - this.offsetX;
+    this.startY = event.clientY - this.offsetY;
+    this.handleDraw(event);
+  }
+  private handleStopDraw(event: MouseEvent) {
+    this.drawing = false;
+    this.$element.removeClass(`${this.pluginSuffix}-drawing`);
+    this.positionB = this.getMousePos(this.canvas, event);
+    if (this.drawingType == 'rectangle' && this.prevWidth != 0) {
+      this.context.lineWidth = this.lineStyle.width;
+      this.context.strokeStyle = this.lineStyle.color;
+      this.context.strokeRect(
+        this.prevStartX,
+        this.prevStartY,
+        this.prevWidth,
+        this.prevHeight
+      );
+      //reset
+      this.prevWidth = 0;
+      this.prevHeight = 0;
+    }
+  }
+  private handleDraw(event: MouseEvent) {
+    if (!this.drawing) return;
+    const ctx = this.context;
+    if (this.drawingType != 'rectangle') {
+      ctx.beginPath();
+      switch (this.drawingType) {
+        case 'pen':
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.lineWidth = this.lineStyle.width;
+          ctx.strokeStyle = this.lineStyle.color;
+          break;
+        case 'eraser':
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.lineWidth = this.options.eraserSize;
+          ctx.strokeStyle = 'black';
+          break;
       }
-    };
+      ctx.lineCap = this.lineStyle.type;
+      ctx.moveTo(this.coordinate.x, this.coordinate.y);
+      this.updateCoordinate(event);
+      ctx.lineTo(this.coordinate.x, this.coordinate.y);
 
-    const initialize = () => {
-      $element.addClass(pluginSuffix);
-      $element.append(createCanvas());
-      $element.append(createOverlayCanvas()); //TODO: Support drawing rectangles
-      $element.append(createToolbox());
-      resizeCanvas();
+      ctx.stroke();
+    } else {
+      const octx = this.overlayContext;
+      // octx.globalCompositeOperation = 'source-over';
+      octx.lineWidth = this.lineStyle.width;
+      octx.strokeStyle = this.lineStyle.color;
+      let mouseX = event.clientX - this.offsetX;
+      let mouseY = event.clientY - this.offsetY;
+      var width = mouseX - this.startX;
+      var height = mouseY - this.startY;
+      // clear the canvas
+      octx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-      plugin.$overlayCanvas.on('mousedown', handleStartDraw);
-      plugin.$overlayCanvas.on('mouseup mouseleave mouseout', handleStopDraw);
-      plugin.$overlayCanvas.on('mousemove', handleDraw);
-    };
+      octx.strokeRect(this.startX, this.startY, width, height);
+      this.prevStartX = this.startX;
+      this.prevStartY = this.startY;
 
-    /* public methods */
-    plugin.init = function () {
-      plugin.settings = $.extend({}, defaults, options);
-      initialize();
-      return plugin;
-    };
+      this.prevWidth = width;
+      this.prevHeight = height;
+    }
+  }
 
-    plugin.clear = function () {
-      plugin.context.clearRect(
-        0,
-        0,
-        plugin.context.canvas.width,
-        plugin.context.canvas.height
-      );
-      plugin.overlayContext.clearRect(
-        0,
-        0,
-        plugin.overlayContext.canvas.width,
-        plugin.overlayContext.canvas.height
-      );
-    };
+  /*Public Methods */
+  public clear() {
+    this.context.clearRect(
+      0,
+      0,
+      this.context.canvas.width,
+      this.context.canvas.height
+    );
+    this.overlayContext.clearRect(
+      0,
+      0,
+      this.overlayContext.canvas.width,
+      this.overlayContext.canvas.height
+    );
+  }
+  public resize() {
+    this.resizeCanvas();
+  }
 
-    plugin.resize = function () {
-      resizeCanvas();
-    };
-
-    plugin.getBytes = function () {
-      return plugin.canvas.toDataURL();
-    };
-    plugin.setCaptureScreen = async function (blob: Blob) {
-      plugin.clear();
-      await blobToCanvas(blob, null, null, plugin.canvas);
-      canvasOffset = plugin.$canvas.offset();
-      offsetX = canvasOffset.left;
-      offsetY = canvasOffset.top;
-      scrollX = plugin.$canvas.scrollLeft();
-      scrollY = plugin.$canvas.scrollTop();
-      plugin.overlayCanvas.width = plugin.canvas.width;
-      plugin.overlayCanvas.height = plugin.canvas.height;
-      plugin.overlayCanvas.setAttribute(
-        'style',
-        `width:${plugin.canvas.width}px;height:${plugin.canvas.height}px`
-      );
-      return plugin;
-    };
-
-    plugin.init();
-  };
-
+  public getBytes() {
+    return this.canvas.toDataURL();
+  }
+  public async setCaptureScreen(blob: Blob) {
+    this.clear();
+    await blobToCanvas(blob, null, null, this.canvas);
+    this.canvasOffset = this.$canvas.offset();
+    this.offsetX = this.canvasOffset.left;
+    this.offsetY = this.canvasOffset.top;
+    this.scrollX = this.$canvas.scrollLeft();
+    this.scrollY = this.$canvas.scrollTop();
+    this.overlayCanvas.width = this.canvas.width;
+    this.overlayCanvas.height = this.canvas.height;
+    this.overlayCanvas.setAttribute(
+      'style',
+      `width:${this.canvas.width}px;height:${this.canvas.height}px`
+    );
+  }
+}
+(function ($) {
+  const pluginSuffix = 'drawpad';
   $.fn.drawpad = function (options: DrawpadPluginOptions) {
     if ($(this).data(pluginSuffix) === undefined) {
-      var plugin = new $.drawpad(this, options);
+      var plugin = new DrawpadPlugin(this, options);
       $(this).data(pluginSuffix, plugin);
     }
-
-    return $(this).data(pluginSuffix);
+    return $(this).data(pluginSuffix) as DrawpadPlugin;
   };
 })(jQuery);

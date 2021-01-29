@@ -1,3 +1,4 @@
+import { Page } from './Page';
 import { Form } from './pages/Form';
 import { Review } from './pages/Review';
 import { Screenshot } from './pages/Screenshot';
@@ -72,35 +73,46 @@ export const scriptLoader = function (script: any, func: Function) {
 };
 export const H2C_IGNORE = 'data-html2canvas-ignore';
 export const modalBody = document.createElement('div');
-
+export interface FeedbackOptions {
+  label: string;
+  header: string;
+  url: string;
+  adapter: Send;
+  nextLabel: string;
+  reviewLabel: string;
+  sendLabel: string;
+  closeLabel: string;
+  messageSuccess: string;
+  messageError: string;
+  pages: Page[];
+  appendTo: HTMLElement;
+  h2cPath: string;
+}
 export class Feedback {
-  private options: any;
+  private options: FeedbackOptions;
   private modal: HTMLElement;
   private currentPage: number;
   private button: any;
   private nextButton: any = null;
   private glass = document.createElement('div');
+  private defaultOptions: FeedbackOptions = {
+    label: 'Send Feedback',
+    header: 'Send Feedback',
+    url: '/',
+    adapter: new XHR('/'),
+    nextLabel: 'Continue',
+    reviewLabel: 'Review',
+    sendLabel: 'Send',
+    closeLabel: 'Close',
+    messageSuccess: 'Your feedback was sent successfully.',
+    messageError: 'There was an error sending your feedback to the server.',
+    pages: undefined,
+    appendTo: document.body,
+    h2cPath: undefined
+  };
 
-  constructor(options: any) {
-    this.options = options || {};
-
-    // default properties
-    this.options.label = this.options.label || 'Send Feedback';
-    this.options.header = this.options.header || 'Send Feedback';
-    this.options.url = this.options.url || '/';
-    this.options.adapter = this.options.adapter || new XHR(options.url);
-
-    this.options.nextLabel = this.options.nextLabel || 'Continue';
-    this.options.reviewLabel = this.options.reviewLabel || 'Review';
-    this.options.sendLabel = this.options.sendLabel || 'Send';
-    this.options.closeLabel = this.options.closeLabel || 'Close';
-
-    this.options.messageSuccess =
-      this.options.messageSuccess || 'Your feedback was sent successfully.';
-    this.options.messageError =
-      this.options.messageError ||
-      'There was an error sending your feedback to the server.';
-
+  constructor(options: Partial<FeedbackOptions>) {
+    this.options = { ...this.defaultOptions, ...options };
     if (this.options.pages === undefined) {
       this.options.pages = [
         new Form(undefined),
@@ -132,7 +144,7 @@ export class Feedback {
     for (; this.currentPage < len; this.currentPage++) {
       // create DOM for each page in the wizard
       if (!(this.options.pages[this.currentPage] instanceof Review)) {
-        this.options.pages[this.currentPage].render();
+        this.options.pages[this.currentPage].render(undefined);
       }
     }
 

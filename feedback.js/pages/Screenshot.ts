@@ -5,13 +5,13 @@ import { Page } from '../Page';
 export class Screenshot extends Page {
   private options: any;
   private h2cDone: boolean;
-  private mouseMoveEvent: any;
-  private mouseClickEvent: any;
-  private blackoutBox: any;
-  private highlightContainer: any;
-  private highlightBox: any;
-  private highlightClose: any;
-  private h2cCanvas: any;
+  private mouseMoveEvent: (this: HTMLElement, ev: MouseEvent) => any;
+  private mouseClickEvent: (this: HTMLElement, ev: MouseEvent) => any;
+  private blackoutBox: HTMLElement;
+  private highlightContainer: HTMLElement;
+  private highlightBox: HTMLCanvasElement;
+  private highlightClose: HTMLElement;
+  private h2cCanvas: HTMLCanvasElement;
   private previousElement: any;
   constructor(options: any) {
     super();
@@ -64,21 +64,22 @@ export class Screenshot extends Page {
       var action = true;
 
       // delegate mouse move event for body
-      this.mouseMoveEvent = (e: any) => {
+      this.mouseMoveEvent = (e: MouseEvent) => {
         // set close button
+        const target = e.target as HTMLElement;
+        const className = (target.className || '').toString();
         if (
-          e.target !== this.previousElement &&
-          (e.target.className.indexOf($this.options.blackoutClass) !== -1 ||
-            e.target.className.indexOf($this.options.highlightClass) !== -1)
+          target !== this.previousElement &&
+          (className.indexOf($this.options.blackoutClass) !== -1 ||
+            className.indexOf($this.options.highlightClass) !== -1)
         ) {
           var left =
-            parseInt(e.target.style.left, 10) +
-            parseInt(e.target.style.width, 10);
+            parseInt(target.style.left, 10) + parseInt(target.style.width, 10);
           left = Math.max(left, 10);
 
           left = Math.min(left, window.innerWidth - 15);
 
-          var top = parseInt(e.target.style.top, 10);
+          var top = parseInt(target.style.top, 10);
           top = Math.max(top, 10);
 
           highlightClose.style.left = left + 'px';
@@ -91,23 +92,23 @@ export class Screenshot extends Page {
 
         // don't do anything if we are highlighting a close button or body tag
         if (
-          e.target.nodeName === 'BODY' ||
-          e.target === highlightClose ||
-          e.target === modal ||
-          e.target === nextButton ||
-          e.target.parentNode === modal ||
-          e.target.parentNode === modalHeader
+          target.nodeName === 'BODY' ||
+          target === highlightClose ||
+          target === modal ||
+          target === nextButton ||
+          target.parentNode === modal ||
+          target.parentNode === modalHeader
         ) {
           // we are not gonna blackout the whole page or the close item
           clearBox();
-          previousElement = e.target;
+          previousElement = target;
           return;
         }
 
         hideClose();
 
         if (e.target !== previousElement) {
-          previousElement = e.target;
+          previousElement = target;
 
           window.clearTimeout(timer);
 
@@ -135,7 +136,7 @@ export class Screenshot extends Page {
             }
 
             // we are only targetting IE>=9, so window.pageYOffset works fine
-            item.setAttribute(dataExclude, false);
+            item.setAttribute(dataExclude, 'false');
             item.style.left = window.pageXOffset + bounds.left + 'px';
             item.style.top = window.pageYOffset + bounds.top + 'px';
             item.style.width = bounds.width + 'px';
@@ -193,7 +194,7 @@ export class Screenshot extends Page {
         highlightContainer = this.highlightContainer,
         removeElement: any,
         ctx = highlightBox.getContext('2d'),
-        buttonClickFunction = function (e: any) {
+        buttonClickFunction = function (e: MouseEvent) {
           e.preventDefault();
 
           if (blackoutButton.className.indexOf('active') === -1) {
@@ -231,7 +232,7 @@ export class Screenshot extends Page {
         },
         blackoutButton = element('a', 'Blackout'),
         highlightButton = element('a', 'Highlight'),
-        previousElement: any;
+        previousElement: HTMLElement;
 
       modal.className += ' fb-animate-toside';
 

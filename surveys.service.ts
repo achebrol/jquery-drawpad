@@ -1,10 +1,11 @@
 import html from './survey.html';
 
 import './survey.css';
+import './bootstrap.css';
 import * as Survey from 'survey-jquery';
 import { getSMSession } from './cookie.service';
+import { FEEDBACK_SURVEY_ID } from './global-options';
 export class SurveysService {
-  private FEEDBACK_SURVEY_ID = '60015dbce08d4f006815c1d3';
   private options: SurveysPluginOptions;
   private aa_survey: Survey.Survey;
   constructor(options: SurveysPluginOptions) {
@@ -80,7 +81,7 @@ export class SurveysService {
                   }
               `,
           variables: {
-            surveyId: this.FEEDBACK_SURVEY_ID,
+            surveyId: FEEDBACK_SURVEY_ID,
             archerId: this.options.archer_id,
             input: {
               result: data
@@ -159,7 +160,8 @@ export class SurveysService {
         if (this.options.allow_multiple !== true) {
           surveyDefinition.cookieName = surveyJSON.activationWindowId;
         }
-        Survey.StylesManager.applyTheme('bootstrap');
+        Survey.StylesManager.applyTheme(this.options.theme);
+        Survey.defaultBootstrapCss.window.root = 'aa-surveys modal-content';
         Survey.defaultBootstrapCss.navigationButton = 'btn btn-success';
         Survey.surveyStrings.emptySurvey =
           'There is no survey active at the moment.';
@@ -173,7 +175,9 @@ export class SurveysService {
         ) {
           return;
         }
-        // survey.css = myCss;
+        if (this.options.css != null) {
+          this.aa_survey.css = this.options.css;
+        }
         // append elements to body
 
         if (this.options.mode === 'inline') {

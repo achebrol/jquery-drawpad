@@ -1,13 +1,13 @@
 export class Page {
-  protected dom: any;
+  public dom: any;
   constructor() {}
   render(dom: any) {
     this.dom = dom;
   }
   start(...args: any[]) {}
   close() {}
-  data() {
-    return false;
+  data(): any {
+    return undefined;
   }
   review(dom: any): any {
     return null;

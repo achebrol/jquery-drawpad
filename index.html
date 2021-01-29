@@ -12,6 +12,12 @@
       rel="stylesheet"
       href="https://unpkg.com/bootstrap@3.3.7/dist/css/bootstrap.min.css"
     />
+    <style>
+      .btn.btn-success {
+        width: 500px;
+        color: red;
+      }
+    </style>
     <script src="dist/bundle.js"></script>
     <script>
       $(document).ready(function () {
@@ -35,7 +41,7 @@
       message on each click. Try it:
     </p>
     <div id="btn-feedback">
-      <button type="button">Send Feedback</button>
+      <button type="button" class="btn btn-success">Send Feedback</button>
     </div>
     <div id="messages"></div>
   </body>
