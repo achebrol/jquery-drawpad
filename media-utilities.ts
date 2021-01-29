@@ -2,6 +2,23 @@
 // see: https://www.webrtc-experiment.com/Pluginfree-Screen-Sharing/#20893521368186473
 // see: https://github.com/muaz-khan/WebRTC-Experiment/blob/master/Pluginfree-Screen-Sharing/conference.js
 
+export const IsDisplayMediaSupported = () => {
+  var nav = navigator as any;
+  if (nav.mediaDevices && nav.mediaDevices.getDisplayMedia) {
+    return true;
+  }
+  if (nav.getDisplayMedia) {
+    return true;
+  }
+  if (nav.webkitGetDisplayMedia) {
+    return true;
+  }
+  if (nav.mozGetDisplayMedia) {
+    return true;
+  }
+  return false;
+};
+
 export const getDisplayMedia = (options: any) => {
   var nav = navigator as any;
   if (nav.mediaDevices && nav.mediaDevices.getDisplayMedia) {
@@ -125,7 +142,13 @@ export const takeScreenshotCanvas = async () => {
 export const getJpegBlob = (canvas: HTMLCanvasElement) => {
   return new Promise<Blob>((resolve, reject) => {
     // docs: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toBlob
-    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
+    if (canvas.toBlob) {
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
+    } else {
+      //canvas[''].msToBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
+      var blob = (canvas as any).msToBlob(); //IE Fix
+      resolve(blob);
+    }
   });
 };
 

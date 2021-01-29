@@ -3,6 +3,8 @@
  */
 interface FeedbackPluginOptions {
   archer_id: string;
+  url: string;
+  assetsUrl: string;
 }
 
 /**
@@ -32,9 +34,6 @@ interface FeedbackPluginFunction {
  * Extend the jQuery result declaration with the example plugin.
  */
 interface JQuery {
-  /**
-   * Extension of the example plugin.
-   */
   feedback: any;
 }
 

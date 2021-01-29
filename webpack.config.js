@@ -2,7 +2,9 @@ const path = require('path');
 
 module.exports = {
   mode: 'development',
+  target: 'es5',
   entry: [
+    //'core-js/stable',
     './jquery-surveys-plugin.ts',
     './jquery-drawpad.ts',
     './jquery-feedback.ts'
@@ -18,6 +20,11 @@ module.exports = {
       {
         test: /\.tsx?$/,
         use: 'ts-loader',
+        /*use: [
+          {
+            loader: 'babel-loader'
+          }
+        ],*/
         exclude: /node_modules/
       }
     ]

@@ -1,8 +1,8 @@
-import { CookieService } from './cookie.service';
 import html from './survey.html';
 
 import './survey.css';
 import * as Survey from 'survey-jquery';
+import { getSMSession } from './cookie.service';
 export class SurveysService {
   private FEEDBACK_SURVEY_ID = '60015dbce08d4f006815c1d3';
   private options: SurveysPluginOptions;
@@ -64,8 +64,7 @@ export class SurveysService {
   }
   postUserFeedback(data: any): Promise<boolean> {
     return new Promise<boolean>((resolve, reject) => {
-      const cookieService = new CookieService();
-      const smsession = cookieService.getSMSession();
+      const smsession = getSMSession();
       $.ajax({
         url: this.options.url,
         contentType: 'application/json',
@@ -102,8 +101,7 @@ export class SurveysService {
     surveyJsOptions: any
   ): Promise<boolean> {
     return new Promise<boolean>((resolve, reject) => {
-      const cookieService = new CookieService();
-      const smsession = cookieService.getSMSession();
+      const smsession = getSMSession();
       $.ajax({
         url: this.options.url,
         contentType: 'application/json',
